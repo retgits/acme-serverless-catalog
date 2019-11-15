@@ -63,7 +63,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	si := &dynamodb.ScanInput{
 		TableName:                 aws.String(c.DynamoDBTable),
 		ExpressionAttributeValues: km,
-		FilterExpression:          aws.String("UserID = :userid"),
+		FilterExpression:          aws.String("ID = :productid"),
 	}
 
 	so, err := dbs.Scan(si)
