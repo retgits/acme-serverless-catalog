@@ -1,0 +1,153 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  The Catalog service is part of the ACME Serverless Shop. The goal of this specific service is to register and serve the catalog of items sold by the shop.
+
+Globals:
+  Function:
+    Timeout: 5
+    Environment:
+      Variables:
+        REGION: !Ref AWS::Region
+        WAVEFRONT_ENABLED: true
+        WAVEFRONT_URL: !Ref WavefrontURL
+        WAVEFRONT_API_TOKEN: !Ref WavefrontToken
+
+Parameters:
+  Version:
+    Type: String
+  User:
+    Type: String
+  Team:
+    Type: String
+  Feature:
+    Type: String
+    Default: acmeserverless
+  Stage:
+    Type: String
+    Default: dev
+  WavefrontURL:
+    Type: String
+  WavefrontToken:
+    Type: String
+
+Resources:
+  CatalogTable: 
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: "ID"
+          AttributeType: "S"
+      KeySchema: 
+        - AttributeName: "ID"
+          KeyType: "HASH"
+      ProvisionedThroughput: 
+        ReadCapacityUnits: "10"
+        WriteCapacityUnits: "10"
+      TableName: "Catalog"
+  Create:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: create
+      Runtime: go1.x
+      CodeUri: bin/
+      FunctionName: Create
+      Description: A Lambda function to create new products in DynamoDB
+      MemorySize: 256
+      Timeout: 10
+      Policies:
+        - AWSLambdaRole
+        - AWSLambdaSQSQueueExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CatalogTable
+      Environment:
+        Variables:
+          TABLENAME: !Ref CatalogTable
+      Events:
+        CreateAPI:
+          Type: Api
+          Properties:
+            Path: /product
+            Method: POST
+      Tags:
+        version: !Ref Version
+        author: !Ref User
+        team: !Ref Team
+        feature: !Ref Feature
+        region: !Ref AWS::Region
+      VersionDescription: !Ref Version
+  AllProducts:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: allproducts
+      Runtime: go1.x
+      CodeUri: bin/
+      FunctionName: AllProducts
+      Description: A Lambda function to get all products from DynamoDB
+      MemorySize: 256
+      Timeout: 10
+      Policies:
+        - AWSLambdaRole
+        - AWSLambdaSQSQueueExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CatalogTable
+      Environment:
+        Variables:
+          TABLENAME: !Ref CatalogTable
+      Events:
+        AllProductsAPI:
+          Type: Api
+          Properties:
+            Path: /products
+            Method: GET
+      Tags:
+        version: !Ref Version
+        author: !Ref User
+        team: !Ref Team
+        feature: !Ref Feature
+        region: !Ref AWS::Region
+      VersionDescription: !Ref Version
+  GetProduct:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: getproduct
+      Runtime: go1.x
+      CodeUri: bin/
+      FunctionName: GetProduct
+      Description: A Lambda function to get a single product from DynamoDB
+      MemorySize: 256
+      Timeout: 10
+      Policies:
+        - AWSLambdaRole
+        - AWSLambdaSQSQueueExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CatalogTable
+      Environment:
+        Variables:
+          TABLENAME: !Ref CatalogTable
+      Events:
+        GetProductAPI:
+          Type: Api
+          Properties:
+            Path: /products/{id}
+            Method: GET
+      Tags:
+        version: !Ref Version
+        author: !Ref User
+        team: !Ref Team
+        feature: !Ref Feature
+        region: !Ref AWS::Region
+      VersionDescription: !Ref Version
+Outputs:  
+  CatalogTableARN:
+    Description: ARN for the Catalog DynamoDB Table
+    Value: !GetAtt CatalogTable.Arn
+  CreateURL:
+    Description: "API Gateway endpoint URL to create products"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/product/"
+  AllProductsURL:
+    Description: "API Gateway endpoint URL to get all products"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/products/"
+  GetProductURL:
+    Description: "API Gateway endpoint URL to get a product"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/products/{id}"
