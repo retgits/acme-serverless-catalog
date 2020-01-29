@@ -1,8 +1,0 @@
-config:
-  stage: dev
-  project: payment
-  author: retgits
-  team: vcs
-  app: lambda-catalog-add
-  aws:
-    bucket: %%AWS_S3_BUCKET%%

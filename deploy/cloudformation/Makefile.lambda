@@ -11,7 +11,7 @@
 stage         	:= dev
 
 ## The name of the project
-project_name  	:= catalog-get
+project_name  	:= serverless-catalog
 
 ## The author of the project
 author          := retgits
@@ -35,12 +35,14 @@ help: ## Displays the help for each target (this message)
 	echo Usage: make [TARGET]
 	echo
 	echo Makefile targets
-	grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+	grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile.lambda | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 	echo
 
 build: ## Build the executable for Lambda
 	echo
-	GOOS=linux GOARCH=amd64 go build -o ./bin/lambda-catalog-get .
+	GOOS=linux GOARCH=amd64 go build -o ./bin/lambda-catalog-all ../../cmd/lambda-catalog-all
+	GOOS=linux GOARCH=amd64 go build -o ./bin/lambda-catalog-get ../../cmd/lambda-catalog-get
+	GOOS=linux GOARCH=amd64 go build -o ./bin/lambda-catalog-newproduct ../../cmd/lambda-catalog-newproduct
 	echo
 
 vuln: ## Scans the Go.mod file for known vulnerabilities using Snyk.
@@ -51,14 +53,14 @@ vuln: ## Scans the Go.mod file for known vulnerabilities using Snyk.
 clean: ## Remove all generated files
 	echo
 	-rm -rf bin
-	-rm packaged.yaml
+	-rm lambda-packaged.yaml
 	echo
 
 deploy: ## Deploy the app to AWS Lambda
 	echo
-	aws cloudformation package --template-file template.yaml --output-template-file packaged.yaml --s3-bucket $(aws_bucket)
+	aws cloudformation package --template-file lambda-template.yaml --output-template-file lambda-packaged.yaml --s3-bucket $(aws_bucket)
 	aws cloudformation deploy \
-		--template-file packaged.yaml \
+		--template-file lambda-packaged.yaml \
 		--stack-name $(project_name)-$(stage) \
 		--capabilities CAPABILITY_IAM \
 		--parameter-overrides Version=$(version) \
