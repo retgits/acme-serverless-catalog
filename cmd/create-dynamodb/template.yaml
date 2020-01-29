@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+## A text string that describes the template.
+Description: >
+  The Catalog service is part of the ACME Fitness Serverless Shop. The goal of this specific service is to register and serve the catalog of items sold by the shop.
+
+## Values to pass to your template at runtime (when you create or update a stack).
+Parameters:
+  Version:
+    Type: String
+  Author:
+    Type: String
+  Team:
+    Type: String
+  Feature:
+    Type: String
+    Default: acmeserverless
+  Stage:
+    Type: String
+    Default: dev
+
+## Specifies the stack resources and their properties.
+Resources:
+  Catalog: 
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: "ID"
+          AttributeType: "S"
+      KeySchema: 
+        - AttributeName: "ID"
+          KeyType: "HASH"
+      ProvisionedThroughput: 
+        ReadCapacityUnits: "10"
+        WriteCapacityUnits: "10"
+      TableName: "Catalog"
+
+## Describes the values that are returned whenever you view your stack's properties.
+Outputs:
+  CatalogTableARN:
+    Description: ARN for the Catalog DynamoDB Table
+    Value: !GetAtt Catalog.Arn
