@@ -20,6 +20,10 @@ The catalog service supports the following data stores:
 
 * [Amazon DynamoDB](https://aws.amazon.com/dynamodb/): With [Makefile.dynamodb](./deploy/cloudformation), you can run run `make -f Makefile.dynamodb deploy` to create the DynamoDB table.
 
+### Seeding Amazon DynamoDB
+
+To start your journey off with random data in the Catalog table, you can use [`seed-dynamodb`](./cmd/seed-dynamodb). Running that program will add the default generated data (in [data.json](./cmd/seed-dynamodb/data.json)) into Amazon DynamoDB. To generate your own data, you can use [Mockaroo](https://www.mockaroo.com/) and import the [schema.json](./cmd/seed-dynamodb/schema.json) to start off.
+
 ## Using Amazon API Gateway
 
 ### Prerequisites for Amazon API Gateway
@@ -66,7 +70,7 @@ Returns a list of all catalog items
 
 ```bash
 curl --request GET \
-  --url http://localhost:8082/products
+  --url https://<id>.execute-api.us-west-2.amazonaws.com/Prod//products
 ```
 
 ```json
@@ -107,7 +111,7 @@ Create a new product item
 
 ```bash
 curl --request POST \
-  --url http://localhost:8082/products \
+  --url https://<id>.execute-api.us-west-2.amazonaws.com/Prod//products \
   --header 'content-type: application/json' \
   --data '         {
             "name": "Tracker",
@@ -169,7 +173,7 @@ Returns details about a specific product id
 
 ```bash
 curl --request GET \
-  --url http://localhost:8082/products/5c61f497e5fdadefe84ff9b9
+  --url https://<id>.execute-api.us-west-2.amazonaws.com/Prod//products/5c61f497e5fdadefe84ff9b9
 ```
 
 ```json
