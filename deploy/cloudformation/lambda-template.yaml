@@ -33,7 +33,7 @@ Resources:
       Handler: lambda-catalog-all
       Runtime: go1.x
       CodeUri: bin/
-      FunctionName: AllProducts
+      FunctionName: !Sub "AllProducts-${Stage}"
       Description: A Lambda function to get all products from DynamoDB
       MemorySize: 256
       Timeout: 10
@@ -70,7 +70,7 @@ Resources:
       Handler: lambda-catalog-get
       Runtime: go1.x
       CodeUri: bin/
-      FunctionName: GetProduct
+      FunctionName: !Sub "GetProduct-${Stage}"
       Description: A Lambda function to get a single product from DynamoDB
       MemorySize: 256
       Timeout: 10
@@ -107,7 +107,7 @@ Resources:
       Handler: lambda-catalog-newproduct
       Runtime: go1.x
       CodeUri: bin/
-      FunctionName: Create
+      FunctionName: !Sub "Create-${Stage}"
       Description: A Lambda function to create new products in DynamoDB
       MemorySize: 256
       Timeout: 10
