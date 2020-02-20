@@ -20,7 +20,14 @@ Parameters:
     Type: String
     Default: dev
 
+## Specifies properties that are common to all your serverless functions, APIs, and simple tables.
 Globals:
+  Function:
+    Environment:
+      Variables:
+        TABLE: !Sub "${Feature}-${Stage}"
+        REGION: !Ref AWS::Region
+        DYNAMO_URL: http://host.docker.internal:8000 ## Uncomment this property to be able to test locally using DynamoDB local 
   Api:
     Cors:
       AllowOrigin: "'*'"
@@ -41,10 +48,7 @@ Resources:
       Policies:
         - AWSLambdaRole
         - DynamoDBCrudPolicy:
-            TableName: "Catalog"
-      Environment:
-        Variables:
-          TABLE: "Catalog"
+            TableName: !Sub "${Feature}-${Stage}"
       Events:
         AllProductsAPI:
           Type: Api
@@ -78,10 +82,7 @@ Resources:
       Policies:
         - AWSLambdaRole
         - DynamoDBCrudPolicy:
-            TableName: "Catalog"
-      Environment:
-        Variables:
-          TABLE: "Catalog"
+            TableName: !Sub "${Feature}-${Stage}"
       Events:
         GetProductAPI:
           Type: Api
@@ -115,10 +116,7 @@ Resources:
       Policies:
         - AWSLambdaRole
         - DynamoDBCrudPolicy:
-            TableName: "Catalog"
-      Environment:
-        Variables:
-          TABLE: "Catalog"
+            TableName: !Sub "${Feature}-${Stage}"
       Events:
         CreateProductAPI:
           Type: Api
