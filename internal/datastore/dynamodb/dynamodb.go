@@ -12,19 +12,34 @@ import (
 	"github.com/retgits/acme-serverless-catalog/internal/datastore"
 )
 
+// Create a single instance of the dynamoDB service
+// which can be reused if the container stays warm
+var dbs *dynamodb.DynamoDB
+
 type manager struct{}
 
-func New() datastore.Manager {
-	return manager{}
-}
-
-func (m manager) AddProduct(p catalog.Product) error {
+// init creates the connection to dynamoDB. If the environment variable
+// DYNAMO_URL is set, the connection is made to that URL instead of
+// relying on the AWS SDK to provide the URL
+func init() {
 	awsSession := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(os.Getenv("REGION")),
 	}))
 
-	dbs := dynamodb.New(awsSession)
+	if len(os.Getenv("DYNAMO_URL")) > 0 {
+		awsSession.Config.Endpoint = aws.String(os.Getenv("DYNAMO_URL"))
+	}
 
+	dbs = dynamodb.New(awsSession)
+}
+
+// New creates a new datastore manager using Amazon DynamoDB as backend
+func New() datastore.Manager {
+	return manager{}
+}
+
+// AddProduct stores a new product in Amazon DynamoDB
+func (m manager) AddProduct(p catalog.Product) error {
 	// Marshal the newly updated product struct
 	payload, err := p.Marshal()
 	if err != nil {
@@ -33,12 +48,16 @@ func (m manager) AddProduct(p catalog.Product) error {
 
 	// Create a map of DynamoDB Attribute Values containing the table keys
 	km := make(map[string]*dynamodb.AttributeValue)
-	km["ID"] = &dynamodb.AttributeValue{
+	km["PK"] = &dynamodb.AttributeValue{
+		S: aws.String("PRODUCT"),
+	}
+	km["SK"] = &dynamodb.AttributeValue{
 		S: aws.String(p.ID),
 	}
 
+	// Create a map of DynamoDB Attribute Values containing the table data elements
 	em := make(map[string]*dynamodb.AttributeValue)
-	em[":content"] = &dynamodb.AttributeValue{
+	em[":payload"] = &dynamodb.AttributeValue{
 		S: aws.String(payload),
 	}
 
@@ -46,7 +65,7 @@ func (m manager) AddProduct(p catalog.Product) error {
 		TableName:                 aws.String(os.Getenv("TABLE")),
 		Key:                       km,
 		ExpressionAttributeValues: em,
-		UpdateExpression:          aws.String("SET ProductContent = :content"),
+		UpdateExpression:          aws.String("SET Payload = :payload"),
 	}
 
 	_, err = dbs.UpdateItem(uii)
@@ -57,67 +76,70 @@ func (m manager) AddProduct(p catalog.Product) error {
 	return nil
 }
 
+// GetProduct retrieves a single product from DynamoDB based on the productID
 func (m manager) GetProduct(productID string) (catalog.Product, error) {
-	awsSession := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(os.Getenv("REGION")),
-	}))
-
-	dbs := dynamodb.New(awsSession)
-
 	// Create a map of DynamoDB Attribute Values containing the table keys
+	// for the access pattern PK = PRODUCT SK = ID
 	km := make(map[string]*dynamodb.AttributeValue)
-	km[":productid"] = &dynamodb.AttributeValue{
+	km[":type"] = &dynamodb.AttributeValue{
+		S: aws.String("PRODUCT"),
+	}
+	km[":id"] = &dynamodb.AttributeValue{
 		S: aws.String(productID),
 	}
 
-	si := &dynamodb.ScanInput{
+	// Create the QueryInput
+	qi := &dynamodb.QueryInput{
 		TableName:                 aws.String(os.Getenv("TABLE")),
+		KeyConditionExpression:    aws.String("PK = :type AND SK = :id"),
 		ExpressionAttributeValues: km,
-		FilterExpression:          aws.String("ID = :productid"),
 	}
 
-	so, err := dbs.Scan(si)
+	// Execute the DynamoDB query
+	qo, err := dbs.Query(qi)
 	if err != nil {
 		return catalog.Product{}, err
 	}
 
-	if len(so.Items) == 0 {
-		return catalog.Product{}, fmt.Errorf("Unable to find product with ID %s", productID)
+	// Return an error if no product was found
+	if len(qo.Items) == 0 {
+		return catalog.Product{}, fmt.Errorf("Unable to find product with id %s", productID)
 	}
 
-	str := *so.Items[0]["ProductContent"].S
-	prod, err := catalog.UnmarshalProduct(str)
-	if err != nil {
-		return catalog.Product{}, err
-	}
-	return prod, nil
+	// Create a product struct from the data
+	str := *qo.Items[0]["Payload"].S
+	return catalog.UnmarshalProduct(str)
 }
 
+// GetProducts retrieves all products from DynamoDB
 func (m manager) GetProducts() ([]catalog.Product, error) {
-	awsSession := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(os.Getenv("REGION")),
-	}))
-
-	dbs := dynamodb.New(awsSession)
-
-	si := &dynamodb.ScanInput{
-		TableName: aws.String(os.Getenv("TABLE")),
+	// Create a map of DynamoDB Attribute Values containing the table keys
+	// for the access pattern PK = PRODUCT
+	km := make(map[string]*dynamodb.AttributeValue)
+	km[":type"] = &dynamodb.AttributeValue{
+		S: aws.String("PRODUCT"),
 	}
 
-	so, err := dbs.Scan(si)
+	// Create the QueryInput
+	qi := &dynamodb.QueryInput{
+		TableName:                 aws.String(os.Getenv("TABLE")),
+		KeyConditionExpression:    aws.String("PK = :type"),
+		ExpressionAttributeValues: km,
+	}
+
+	qo, err := dbs.Query(qi)
 	if err != nil {
 		return nil, err
 	}
 
-	prods := make([]catalog.Product, len(so.Items))
+	prods := make([]catalog.Product, len(qo.Items))
 
-	for idx, ct := range so.Items {
-		str := *ct["ProductContent"].S
+	for idx, ct := range qo.Items {
+		str := *ct["Payload"].S
 		prod, err := catalog.UnmarshalProduct(str)
 		if err != nil {
-			errormessage := fmt.Sprintf("error unmarshalling product data: %s", err.Error())
-			log.Println(errormessage)
-			break
+			log.Println(fmt.Sprintf("error unmarshalling product data: %s", err.Error()))
+			continue
 		}
 		prods[idx] = prod
 	}
