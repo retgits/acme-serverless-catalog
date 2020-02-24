@@ -9,6 +9,7 @@ The Catalog service is part of the [ACME Fitness Serverless Shop](https://github
 * [Go (at least Go 1.12)](https://golang.org/dl/)
 * [An AWS Account](https://portal.aws.amazon.com/billing/signup)
 * The _vuln_ targets for Make and Mage rely on the [Snyk](http://snyk.io/) CLI
+* This service uses [Sentry.io](https://sentry.io) for tracing and error reporting
 
 ## Eventing Options
 
