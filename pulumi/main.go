@@ -202,11 +202,11 @@ func main() {
 			roles[function] = role
 		}
 
-		// All functions will have the same environment variables
+		// All functions will have the same environment variables, with the exception
+		// of the function name
 		variables := make(map[string]pulumi.StringInput)
 		variables["REGION"] = pulumi.String(lambdaConfig.Region)
 		variables["SENTRY_DSN"] = pulumi.String(lambdaConfig.SentryDSN)
-		variables["FUNCTION_NAME"] = pulumi.String(fmt.Sprintf("%s-lambda-payment", ctx.Stack()))
 		variables["VERSION"] = tags.Version
 		variables["STAGE"] = pulumi.String(ctx.Stack())
 		parts := strings.Split(lambdaConfig.DynamoARN, "/")
@@ -229,6 +229,7 @@ func main() {
 			Role:        roles["lambda-catalog-all"].Arn,
 			Tags:        pulumi.Map(tagMap),
 		}
+		variables["FUNCTION_NAME"] = pulumi.String(fmt.Sprintf("%s-lambda-catalog-all", ctx.Stack()))
 
 		function, err := lambda.NewFunction(ctx, fmt.Sprintf("%s-lambda-catalog-all", ctx.Stack()), functionArgs)
 		if err != nil {
@@ -282,6 +283,7 @@ func main() {
 			Role:        roles["lambda-catalog-get"].Arn,
 			Tags:        pulumi.Map(tagMap),
 		}
+		variables["FUNCTION_NAME"] = pulumi.String(fmt.Sprintf("%s-lambda-catalog-get", ctx.Stack()))
 
 		function, err = lambda.NewFunction(ctx, fmt.Sprintf("%s-lambda-catalog-get", ctx.Stack()), functionArgs)
 		if err != nil {
@@ -344,6 +346,7 @@ func main() {
 			Role:        roles["lambda-catalog-newproduct"].Arn,
 			Tags:        pulumi.Map(tagMap),
 		}
+		variables["FUNCTION_NAME"] = pulumi.String(fmt.Sprintf("%s-lambda-catalog-newproduct", ctx.Stack()))
 
 		function, err = lambda.NewFunction(ctx, fmt.Sprintf("%s-lambda-catalog-newproduct", ctx.Stack()), functionArgs)
 		if err != nil {
