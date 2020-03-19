@@ -1,0 +1,82 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Catalog",
+    "version": "v0.2.0"
+  },
+  "paths": {
+    "/liveness": {
+      "get": {
+        "summary": "Liveness",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "summary": "Get Product Details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/static/images/{imageName}": {
+      "get": {
+        "summary": "Get Image",
+        "parameters": [
+          {
+            "name": "imageName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "summary": "Get All Products",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      },
+      "post": {
+        "summary": "Post New Product",
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {}
+          }
+        }
+      }
+    }
+  }
+}

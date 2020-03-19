@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go v1.29.18
 	github.com/getsentry/sentry-go v0.5.1
 	github.com/gofrs/uuid v3.2.0+incompatible
-	github.com/pulumi/pulumi v1.12.1
-	github.com/pulumi/pulumi-aws v1.26.0
-	github.com/retgits/pulumi-helpers v0.1.4
+	github.com/pulumi/pulumi v1.13.0
+	github.com/pulumi/pulumi-aws v1.27.0
+	github.com/retgits/pulumi-helpers v0.1.7
 )

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/go/pulumi/config"
 	"github.com/retgits/pulumi-helpers/builder"
+	gw "github.com/retgits/pulumi-helpers/gateway"
 	"github.com/retgits/pulumi-helpers/sampolicies"
 )
 
@@ -97,35 +99,6 @@ func main() {
 		// Create a factory to get policies from
 		iamFactory := sampolicies.NewFactory().WithAccountID(genericConfig.AccountID).WithPartition("aws").WithRegion(genericConfig.Region)
 
-		// Create the API Gateway Policy
-		iamFactory.AddAssumeRoleLambda()
-		iamFactory.AddExecuteAPI()
-		policies, err := iamFactory.GetPolicyStatement()
-		if err != nil {
-			return err
-		}
-
-		// Create an API Gateway
-		gateway, err := apigateway.NewRestApi(ctx, "CatalogService", &apigateway.RestApiArgs{
-			Name:        pulumi.String("CatalogService"),
-			Description: pulumi.String("ACME Serverless Fitness Shop - Catalog"),
-			Tags:        pulumi.Map(tagMap),
-			Policy:      pulumi.String(policies),
-		})
-		if err != nil {
-			return err
-		}
-
-		// Create the parent resources in the API Gateway
-		productsResource, err := apigateway.NewResource(ctx, "ProductsAPIResource", &apigateway.ResourceArgs{
-			RestApi:  gateway.ID(),
-			PathPart: pulumi.String("products"),
-			ParentId: gateway.RootResourceId,
-		})
-		if err != nil {
-			return err
-		}
-
 		// Lookup the DynamoDB table
 		dynamoTable, err := dynamodb.LookupTable(ctx, &dynamodb.LookupTableArgs{
 			Name: fmt.Sprintf("%s-acmeserverless-dynamodb", ctx.Stack()),
@@ -207,44 +180,12 @@ func main() {
 			Tags:        pulumi.Map(tagMap),
 		}
 
-		function, err := lambda.NewFunction(ctx, fmt.Sprintf("%s-lambda-catalog-all", ctx.Stack()), functionArgs)
+		catalogAllFunction, err := lambda.NewFunction(ctx, fmt.Sprintf("%s-lambda-catalog-all", ctx.Stack()), functionArgs)
 		if err != nil {
 			return err
 		}
 
-		_, err = apigateway.NewMethod(ctx, "AllCatalogsAPIGetMethod", &apigateway.MethodArgs{
-			HttpMethod:    pulumi.String("GET"),
-			Authorization: pulumi.String("NONE"),
-			RestApi:       gateway.ID(),
-			ResourceId:    productsResource.ID(),
-		}, pulumi.DependsOn([]pulumi.Resource{gateway, productsResource}))
-		if err != nil {
-			return err
-		}
-
-		_, err = apigateway.NewIntegration(ctx, "AllCatalogsAPIIntegration", &apigateway.IntegrationArgs{
-			HttpMethod:            pulumi.String("GET"),
-			IntegrationHttpMethod: pulumi.String("POST"),
-			ResourceId:            productsResource.ID(),
-			RestApi:               gateway.ID(),
-			Type:                  pulumi.String("AWS_PROXY"),
-			Uri:                   function.InvokeArn,
-		}, pulumi.DependsOn([]pulumi.Resource{gateway, productsResource, function}))
-		if err != nil {
-			return err
-		}
-
-		_, err = lambda.NewPermission(ctx, "AllCatalogsAPIPermission", &lambda.PermissionArgs{
-			Action:    pulumi.String("lambda:InvokeFunction"),
-			Function:  function.Name,
-			Principal: pulumi.String("apigateway.amazonaws.com"),
-			SourceArn: pulumi.Sprintf("arn:aws:execute-api:%s:%s:%s/*/GET/products", genericConfig.Region, genericConfig.AccountID, gateway.ID()),
-		}, pulumi.DependsOn([]pulumi.Resource{gateway, productsResource, function}))
-		if err != nil {
-			return err
-		}
-
-		ctx.Export("lambda-catalog-all::Arn", function.Arn)
+		ctx.Export("lambda-catalog-all::Arn", catalogAllFunction.Arn)
 
 		// Create the Get function
 		variables["FUNCTION_NAME"] = pulumi.String(fmt.Sprintf("%s-lambda-catalog-get", ctx.Stack()))
@@ -265,53 +206,12 @@ func main() {
 			Tags:        pulumi.Map(tagMap),
 		}
 
-		function, err = lambda.NewFunction(ctx, fmt.Sprintf("%s-lambda-catalog-get", ctx.Stack()), functionArgs)
+		catalogGetFunction, err := lambda.NewFunction(ctx, fmt.Sprintf("%s-lambda-catalog-get", ctx.Stack()), functionArgs)
 		if err != nil {
 			return err
 		}
 
-		resource, err := apigateway.NewResource(ctx, "GetCatalogsAPI", &apigateway.ResourceArgs{
-			RestApi:  gateway.ID(),
-			PathPart: pulumi.String("{id}"),
-			ParentId: productsResource.ID(),
-		}, pulumi.DependsOn([]pulumi.Resource{gateway}))
-		if err != nil {
-			return err
-		}
-
-		_, err = apigateway.NewMethod(ctx, "GetCatalogsAPIGetMethod", &apigateway.MethodArgs{
-			HttpMethod:    pulumi.String("GET"),
-			Authorization: pulumi.String("NONE"),
-			RestApi:       gateway.ID(),
-			ResourceId:    resource.ID(),
-		}, pulumi.DependsOn([]pulumi.Resource{gateway, resource}))
-		if err != nil {
-			return err
-		}
-
-		_, err = apigateway.NewIntegration(ctx, "GetCatalogsAPIIntegration", &apigateway.IntegrationArgs{
-			HttpMethod:            pulumi.String("GET"),
-			IntegrationHttpMethod: pulumi.String("POST"),
-			ResourceId:            resource.ID(),
-			RestApi:               gateway.ID(),
-			Type:                  pulumi.String("AWS_PROXY"),
-			Uri:                   function.InvokeArn,
-		}, pulumi.DependsOn([]pulumi.Resource{gateway, resource, function}))
-		if err != nil {
-			return err
-		}
-
-		_, err = lambda.NewPermission(ctx, "GetCatalogsAPIPermission", &lambda.PermissionArgs{
-			Action:    pulumi.String("lambda:InvokeFunction"),
-			Function:  function.Name,
-			Principal: pulumi.String("apigateway.amazonaws.com"),
-			SourceArn: pulumi.Sprintf("arn:aws:execute-api:%s:%s:%s/*/GET/products/*", genericConfig.Region, genericConfig.AccountID, gateway.ID()),
-		}, pulumi.DependsOn([]pulumi.Resource{gateway, resource, function}))
-		if err != nil {
-			return err
-		}
-
-		ctx.Export("lambda-catalog-get::Arn", function.Arn)
+		ctx.Export("lambda-catalog-get::Arn", catalogGetFunction.Arn)
 
 		// Create the NewProduct function
 		variables["FUNCTION_NAME"] = pulumi.String(fmt.Sprintf("%s-lambda-catalog-newproduct", ctx.Stack()))
@@ -333,53 +233,117 @@ func main() {
 		}
 		variables["FUNCTION_NAME"] = pulumi.String(fmt.Sprintf("%s-lambda-catalog-newproduct", ctx.Stack()))
 
-		function, err = lambda.NewFunction(ctx, fmt.Sprintf("%s-lambda-catalog-newproduct", ctx.Stack()), functionArgs)
+		catalogNewProductFunction, err := lambda.NewFunction(ctx, fmt.Sprintf("%s-lambda-catalog-newproduct", ctx.Stack()), functionArgs)
 		if err != nil {
 			return err
 		}
 
-		resource, err = apigateway.NewResource(ctx, "NewCatalogAPI", &apigateway.ResourceArgs{
-			RestApi:  gateway.ID(),
-			PathPart: pulumi.String("product"),
-			ParentId: gateway.RootResourceId,
-		}, pulumi.DependsOn([]pulumi.Resource{gateway}))
+		ctx.Export("lambda-catalog-newproduct::Arn", catalogNewProductFunction.Arn)
+
+		// Create the API Gateway Policy
+		iamFactory.ClearPolicies()
+		iamFactory.AddAssumeRoleLambda()
+		iamFactory.AddExecuteAPI()
+		policies, err := iamFactory.GetPolicyStatement()
 		if err != nil {
 			return err
 		}
 
-		_, err = apigateway.NewMethod(ctx, "NewCatalogAPIPostMethod", &apigateway.MethodArgs{
-			HttpMethod:    pulumi.String("POST"),
-			Authorization: pulumi.String("NONE"),
-			RestApi:       gateway.ID(),
-			ResourceId:    resource.ID(),
-		}, pulumi.DependsOn([]pulumi.Resource{gateway, resource}))
+		// Read the OpenAPI specification
+		bytes, err := ioutil.ReadFile("../api/openapi.json")
 		if err != nil {
 			return err
 		}
 
-		_, err = apigateway.NewIntegration(ctx, "NewCatalogAPIIntegration", &apigateway.IntegrationArgs{
-			HttpMethod:            pulumi.String("POST"),
-			IntegrationHttpMethod: pulumi.String("POST"),
-			ResourceId:            resource.ID(),
-			RestApi:               gateway.ID(),
-			Type:                  pulumi.String("AWS_PROXY"),
-			Uri:                   function.InvokeArn,
-		}, pulumi.DependsOn([]pulumi.Resource{gateway, resource, function}))
+		// Create an API Gateway
+		gateway, err := apigateway.NewRestApi(ctx, "CatalogService", &apigateway.RestApiArgs{
+			Name:        pulumi.String("CatalogService"),
+			Description: pulumi.String("ACME Serverless Fitness Shop - Catalog"),
+			Tags:        pulumi.Map(tagMap),
+			Policy:      pulumi.String(policies),
+			Body:        pulumi.StringPtr(string(bytes)),
+		})
 		if err != nil {
 			return err
 		}
 
-		_, err = lambda.NewPermission(ctx, "NewCatalogAPIPermission", &lambda.PermissionArgs{
-			Action:    pulumi.String("lambda:InvokeFunction"),
-			Function:  function.Name,
-			Principal: pulumi.String("apigateway.amazonaws.com"),
-			SourceArn: pulumi.Sprintf("arn:aws:execute-api:%s:%s:%s/*/POST/product", genericConfig.Region, genericConfig.AccountID, gateway.ID()),
-		}, pulumi.DependsOn([]pulumi.Resource{gateway, resource, function}))
-		if err != nil {
-			return err
-		}
+		gatewayURL := gateway.ID().ToStringOutput().ApplyString(func(id string) string {
+			resource := gw.MustGetGatewayResource(ctx, id, "/products")
 
-		ctx.Export("lambda-catalog-newproduct::Arn", function.Arn)
+			_, err = apigateway.NewIntegration(ctx, "AllCatalogsAPIIntegration", &apigateway.IntegrationArgs{
+				HttpMethod:            pulumi.String("GET"),
+				IntegrationHttpMethod: pulumi.String("POST"),
+				ResourceId:            pulumi.String(resource.Id),
+				RestApi:               gateway.ID(),
+				Type:                  pulumi.String("AWS_PROXY"),
+				Uri:                   catalogAllFunction.InvokeArn,
+			})
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			_, err = lambda.NewPermission(ctx, "AllCatalogsAPIPermission", &lambda.PermissionArgs{
+				Action:    pulumi.String("lambda:InvokeFunction"),
+				Function:  catalogAllFunction.Name,
+				Principal: pulumi.String("apigateway.amazonaws.com"),
+				SourceArn: pulumi.Sprintf("arn:aws:execute-api:%s:%s:%s/*/GET/products", genericConfig.Region, genericConfig.AccountID, gateway.ID()),
+			})
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			resource = gw.MustGetGatewayResource(ctx, id, "/products/{id}")
+
+			_, err = apigateway.NewIntegration(ctx, "GetCatalogsAPIIntegration", &apigateway.IntegrationArgs{
+				HttpMethod:            pulumi.String("GET"),
+				IntegrationHttpMethod: pulumi.String("POST"),
+				ResourceId:            pulumi.String(resource.Id),
+				RestApi:               gateway.ID(),
+				Type:                  pulumi.String("AWS_PROXY"),
+				Uri:                   catalogGetFunction.InvokeArn,
+			})
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			_, err = lambda.NewPermission(ctx, "GetCatalogsAPIPermission", &lambda.PermissionArgs{
+				Action:    pulumi.String("lambda:InvokeFunction"),
+				Function:  catalogGetFunction.Name,
+				Principal: pulumi.String("apigateway.amazonaws.com"),
+				SourceArn: pulumi.Sprintf("arn:aws:execute-api:%s:%s:%s/*/GET/products/*", genericConfig.Region, genericConfig.AccountID, gateway.ID()),
+			})
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			resource = gw.MustGetGatewayResource(ctx, id, "/products")
+
+			_, err = apigateway.NewIntegration(ctx, "NewCatalogAPIIntegration", &apigateway.IntegrationArgs{
+				HttpMethod:            pulumi.String("POST"),
+				IntegrationHttpMethod: pulumi.String("POST"),
+				ResourceId:            pulumi.String(resource.Id),
+				RestApi:               gateway.ID(),
+				Type:                  pulumi.String("AWS_PROXY"),
+				Uri:                   catalogNewProductFunction.InvokeArn,
+			})
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			_, err = lambda.NewPermission(ctx, "NewCatalogAPIPermission", &lambda.PermissionArgs{
+				Action:    pulumi.String("lambda:InvokeFunction"),
+				Function:  catalogNewProductFunction.Name,
+				Principal: pulumi.String("apigateway.amazonaws.com"),
+				SourceArn: pulumi.Sprintf("arn:aws:execute-api:%s:%s:%s/*/POST/product", genericConfig.Region, genericConfig.AccountID, gateway.ID()),
+			})
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			return fmt.Sprintf("https://%s.execute-api.%s.amazonaws.com/prod/", id, genericConfig.Region)
+		})
+
+		ctx.Export("Gateway::URL", gatewayURL)
 
 		return nil
 	})
