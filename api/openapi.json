@@ -5,17 +5,6 @@
     "version": "v0.2.0"
   },
   "paths": {
-    "/liveness": {
-      "get": {
-        "summary": "Liveness",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {}
-          }
-        }
-      }
-    },
     "/products/{id}": {
       "get": {
         "summary": "Get Product Details",
