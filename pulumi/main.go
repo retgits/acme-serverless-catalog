@@ -276,7 +276,7 @@ func main() {
 		gatewayURL := gateway.ID().ToStringOutput().ApplyString(func(id string) string {
 			resource := gw.MustGetGatewayResource(ctx, id, "/products")
 
-			_, err = apigateway.NewIntegration(ctx, "AllCatalogsAPIIntegration", &apigateway.IntegrationArgs{
+			i1, err := apigateway.NewIntegration(ctx, "AllCatalogsAPIIntegration", &apigateway.IntegrationArgs{
 				HttpMethod:            pulumi.String("GET"),
 				IntegrationHttpMethod: pulumi.String("POST"),
 				ResourceId:            pulumi.String(resource.Id),
@@ -300,7 +300,7 @@ func main() {
 
 			resource = gw.MustGetGatewayResource(ctx, id, "/products/{id}")
 
-			_, err = apigateway.NewIntegration(ctx, "GetCatalogsAPIIntegration", &apigateway.IntegrationArgs{
+			i2, err := apigateway.NewIntegration(ctx, "GetCatalogsAPIIntegration", &apigateway.IntegrationArgs{
 				HttpMethod:            pulumi.String("GET"),
 				IntegrationHttpMethod: pulumi.String("POST"),
 				ResourceId:            pulumi.String(resource.Id),
@@ -324,7 +324,7 @@ func main() {
 
 			resource = gw.MustGetGatewayResource(ctx, id, "/products")
 
-			_, err = apigateway.NewIntegration(ctx, "NewCatalogAPIIntegration", &apigateway.IntegrationArgs{
+			i3, err := apigateway.NewIntegration(ctx, "NewCatalogAPIIntegration", &apigateway.IntegrationArgs{
 				HttpMethod:            pulumi.String("POST"),
 				IntegrationHttpMethod: pulumi.String("POST"),
 				ResourceId:            pulumi.String(resource.Id),
@@ -352,7 +352,7 @@ func main() {
 				RestApi:          gateway.ID(),
 				StageDescription: pulumi.String("Prod Stage"),
 				StageName:        pulumi.String("Prod"),
-			})
+			}, pulumi.DependsOn([]pulumi.Resource{i1, i2, i3}))
 			if err != nil {
 				fmt.Println(err)
 			}

@@ -26,27 +26,6 @@
         }
       }
     },
-    "/static/images/{imageName}": {
-      "get": {
-        "summary": "Get Image",
-        "parameters": [
-          {
-            "name": "imageName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {}
-          }
-        }
-      }
-    },
     "/products": {
       "get": {
         "summary": "Get All Products",
