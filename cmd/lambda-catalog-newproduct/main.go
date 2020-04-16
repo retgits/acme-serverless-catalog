@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/getsentry/sentry-go"
 	"github.com/gofrs/uuid"
-	catalog "github.com/retgits/acme-serverless-catalog"
+	acmeserverless "github.com/retgits/acme-serverless"
 	"github.com/retgits/acme-serverless-catalog/internal/datastore/dynamodb"
 	wflambda "github.com/wavefronthq/wavefront-lambda-go"
 )
@@ -39,7 +39,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	headers["Access-Control-Allow-Origin"] = "*"
 
 	// Update the product with an ID
-	prod, err := catalog.UnmarshalProduct(request.Body)
+	prod, err := acmeserverless.UnmarshalCatalogItem(request.Body)
 	if err != nil {
 		return handleError("unmarshalling product", headers, err)
 	}
@@ -52,7 +52,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return handleError("adding product", headers, err)
 	}
 
-	status := catalog.ProductCreateResponse{
+	status := acmeserverless.CreateCatalogItemResponse{
 		Message:    "Product created successfully!",
 		ResourceID: prod,
 		Status:     http.StatusOK,

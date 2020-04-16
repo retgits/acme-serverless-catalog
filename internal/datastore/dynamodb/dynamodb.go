@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	catalog "github.com/retgits/acme-serverless-catalog"
+	acmeserverless "github.com/retgits/acme-serverless"
 	"github.com/retgits/acme-serverless-catalog/internal/datastore"
 )
 
@@ -44,7 +44,7 @@ func New() datastore.Manager {
 }
 
 // AddProduct stores a new product in Amazon DynamoDB
-func (m manager) AddProduct(p catalog.Product) error {
+func (m manager) AddProduct(p acmeserverless.CatalogItem) error {
 	// Marshal the newly updated product struct
 	payload, err := p.Marshal()
 	if err != nil {
@@ -82,7 +82,7 @@ func (m manager) AddProduct(p catalog.Product) error {
 }
 
 // GetProduct retrieves a single product from DynamoDB based on the productID
-func (m manager) GetProduct(productID string) (catalog.Product, error) {
+func (m manager) GetProduct(productID string) (acmeserverless.CatalogItem, error) {
 	// Create a map of DynamoDB Attribute Values containing the table keys
 	// for the access pattern PK = PRODUCT SK = ID
 	km := make(map[string]*dynamodb.AttributeValue)
@@ -103,21 +103,21 @@ func (m manager) GetProduct(productID string) (catalog.Product, error) {
 	// Execute the DynamoDB query
 	qo, err := dbs.Query(qi)
 	if err != nil {
-		return catalog.Product{}, err
+		return acmeserverless.CatalogItem{}, err
 	}
 
 	// Return an error if no product was found
 	if len(qo.Items) == 0 {
-		return catalog.Product{}, fmt.Errorf("Unable to find product with id %s", productID)
+		return acmeserverless.CatalogItem{}, fmt.Errorf("Unable to find product with id %s", productID)
 	}
 
 	// Create a product struct from the data
 	str := *qo.Items[0]["Payload"].S
-	return catalog.UnmarshalProduct(str)
+	return acmeserverless.UnmarshalCatalogItem(str)
 }
 
 // GetProducts retrieves all products from DynamoDB
-func (m manager) GetProducts() ([]catalog.Product, error) {
+func (m manager) GetProducts() ([]acmeserverless.CatalogItem, error) {
 	// Create a map of DynamoDB Attribute Values containing the table keys
 	// for the access pattern PK = PRODUCT
 	km := make(map[string]*dynamodb.AttributeValue)
@@ -137,11 +137,11 @@ func (m manager) GetProducts() ([]catalog.Product, error) {
 		return nil, err
 	}
 
-	prods := make([]catalog.Product, len(qo.Items))
+	prods := make([]acmeserverless.CatalogItem, len(qo.Items))
 
 	for idx, ct := range qo.Items {
 		str := *ct["Payload"].S
-		prod, err := catalog.UnmarshalProduct(str)
+		prod, err := acmeserverless.UnmarshalCatalogItem(str)
 		if err != nil {
 			log.Println(fmt.Sprintf("error unmarshalling product data: %s", err.Error()))
 			continue

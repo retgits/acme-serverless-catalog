@@ -4,13 +4,13 @@
 // needs to be implemented.
 package datastore
 
-import catalog "github.com/retgits/acme-serverless-catalog"
+import acmeserverless "github.com/retgits/acme-serverless"
 
 // Manager is the interface that describes the methods the
 // data store needs to implement to be able to work with
 // the ACME Serverless Fitness Shop.
 type Manager interface {
-	AddProduct(p catalog.Product) error
-	GetProduct(productID string) (catalog.Product, error)
-	GetProducts() ([]catalog.Product, error)
+	AddProduct(p acmeserverless.CatalogItem) error
+	GetProduct(productID string) (acmeserverless.CatalogItem, error)
+	GetProducts() ([]acmeserverless.CatalogItem, error)
 }
