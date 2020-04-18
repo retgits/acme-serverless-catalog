@@ -54,7 +54,7 @@ func (m manager) AddProduct(p acmeserverless.CatalogItem) error {
 	}
 
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	_, err = dbs.UpdateOne(ctx, bson.D{{"SK", p.ID}}, bson.D{{"$set", bson.D{{"PK", "CATALOG"}, {"Payload", string(payload)}}}})
+	_, err = dbs.InsertOne(ctx, bson.D{{"SK", p.ID}, {"PK", "PRODUCT"}, {"Payload", string(payload)}})
 
 	return err
 }

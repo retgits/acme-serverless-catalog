@@ -104,7 +104,7 @@ func main() {
 	router.GlobalOPTIONS = CORSHandler
 
 	// Add routes to the router
-	router.POST("/products", cfg.WrapFastHTTPRequest(sentryHandler.Handle(AddCatalogItem)))
+	router.POST("/product", cfg.WrapFastHTTPRequest(sentryHandler.Handle(AddCatalogItem)))
 	router.GET("/products/{id}", cfg.WrapFastHTTPRequest(sentryHandler.Handle(GetCatalogItemDetails)))
 	router.GET("/products", cfg.WrapFastHTTPRequest(sentryHandler.Handle(GetAllCatalogItems)))
 
